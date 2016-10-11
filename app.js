@@ -16,20 +16,21 @@
 
 'use strict';
 
-var express = require('express');
-var app = express();
-var fs = require('fs');
-var extend = require('extend');
-var path = require('path');
-var async = require('async');
-var watson = require('watson-developer-cloud');
-var uuid = require('uuid');
-var bundleUtils = require('./config/bundle-utils');
-var os = require('os');
-var ffmpeg = require('fluent-ffmpeg');
-var Sync = require('sync');
-var ONE_HOUR = 3600000;
-var TWENTY_SECONDS = 20000;
+const express = require('express');
+const app = express();
+const fs = require('fs');
+const extend = require('extend');
+const path = require('path');
+const async = require('async');
+const watson = require('watson-developer-cloud');
+const uuid = require('uuid');
+const bundleUtils = require('./config/bundle-utils');
+const os = require('os');
+const ffmpeg = require('fluent-ffmpeg');
+const Sync = require('sync');
+const ONE_HOUR = 3600000;
+const TWENTY_SECONDS = 20000;
+
 
 // Bootstrap application settings
 require('./config/express')(app);
@@ -37,10 +38,12 @@ require('./config/express')(app);
 // Create the service wrapper
 // If no API Key is provided here, the watson-developer-cloud@2.x.x library will check for an ALCHEMY_LANGUAGE_API_KEY 
 // environment property and then fall back to the VCAP_SERVICES property provided by Bluemix.
-var visualRecognition = new watson.VisualRecognitionV3({
-  // api_key: '73862c677c5988a7e59db9293f2581b084b5d5d1',
+const visualRecognition = new watson.VisualRecognitionV3({
+  // api_key: '',
   version_date: '2015-05-19'
 });
+
+process.env['PATH'] += ';'+path.join(__dirname, 'ffmpeg', 'bin');
 
 app.get('/', function (req, res) {
   res.render('use');
@@ -303,14 +306,14 @@ app.post('/api/classify', app.upload.single('images_file'), function (req, res) 
     }
     // res.status(400).json('combine.error');
     // run the 3 classifiers asynchronously and combine the results
-    async.parallel(methods.map(function(method) {
+    async.parallel(methods.map(function (method) {
       var fn = visualRecognition[method].bind(visualRecognition, params);
       if (method === 'recognizeText' || method === 'detectFaces') {
         return async.reflect(async.timeout(fn, TWENTY_SECONDS));
       } else {
         return async.reflect(fn);
       }
-    }), function(err, results) {
+    }), function (err, results) {
       // delete the recognized file
       if (params.images_file && !req.body.url) {
         deleteUploadedFile(params.images_file);
@@ -320,7 +323,7 @@ app.post('/api/classify', app.upload.single('images_file'), function (req, res) 
         return res.status(err.code || 500).json(err);
       }
       // combine the results
-      var combine = results.map(function(result) {
+      var combine = results.map(function (result) {
         if (result.value && result.value.length) {
           // value is an array of arguments passed to the callback (excluding the error).
           // In this case, it's the result and then the request object.
@@ -328,7 +331,7 @@ app.post('/api/classify', app.upload.single('images_file'), function (req, res) 
           result.value = result.value[0];
         }
         return result;
-      }).reduce(function(prev, cur) {
+      }).reduce(function (prev, cur) {
         return extend(true, prev, cur);
       });
       if (combine.value) {
@@ -337,7 +340,7 @@ app.post('/api/classify', app.upload.single('images_file'), function (req, res) 
           combine.value.classifier_ids = req.body.classifier_id;
         }
         combine.value.raw = {};
-        methods.map(function(methodName, idx) {
+        methods.map(function (methodName, idx) {
           combine.value.raw[methodName] = encodeURIComponent(JSON.stringify(results[idx].value));
         });
         res.json(combine.value);
