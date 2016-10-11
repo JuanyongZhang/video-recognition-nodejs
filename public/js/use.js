@@ -74,6 +74,7 @@ function setupUse(params) {
   var $urlInput = $(pclass + 'url-input');
   var $imageDataInput = $(pclass + 'image-data-input');
   var $radioImages = $(pclass + 'example-radio');
+  var $radioVideos = $(pclass + 'video-clip');
   var $invalidImageUrl = $(pclass + 'invalid-image-url').hide();
   var $invalidUrl = $(pclass + 'invalid-url').show();
   var $dropzone = $(pclass + 'dropzone');
@@ -81,7 +82,7 @@ function setupUse(params) {
   var $outputData = $(pclass + 'output-data');
   var $boxes = $('.boxes');
   var $randomImage = $(pclass + 'random-test-image');
-
+  
   /*
    * Resets the panel
    */
@@ -151,6 +152,9 @@ function setupUse(params) {
     if (outputImage && (outputImage.height >= outputImage.width)) {
       $(outputImage).addClass('landscape');
     }
+
+    $image.attr('src', 'buff/screenshot.png');
+
     scrollToElement($result);
   }
 
@@ -231,6 +235,35 @@ function setupUse(params) {
       $urlInput.show();
       $('input[type=radio][name=use--example-images]').prop('disabled', false);
     });
+  });
+
+  $radioVideos.click(function () {
+    var rI = $(this);
+    var videoPath = rI.find('source').attr('src');
+    $urlInput.hide();
+        classifyImage(videoPath, null, function () {
+      resetPasteUrl();
+      rI.parent().find('label').addClass('dim');
+      rI.parent().find('label[for=use--file]').removeClass('dim')
+      rI.parent().find('label[for=' + rI.attr('id') + ']').removeClass('dim');
+    }, function () {
+      $urlInput.val('');
+      $urlInput.show();
+    });
+
+
+    // $urlInput.hide();
+    // classifyImage(imgPath, null, function () {
+    //   $('input[type=radio][name=use--example-images]').prop('disabled', true);
+    //   resetPasteUrl();
+    //   rI.parent().find('label').addClass('dim');
+    //   rI.parent().find('label[for=use--file]').removeClass('dim')
+    //   rI.parent().find('label[for=' + rI.attr('id') + ']').removeClass('dim');
+    // }, function () {
+    //   $urlInput.val('');
+    //   $urlInput.show();
+    //   $('input[type=radio][name=use--example-images]').prop('disabled', false);
+    // });
   });
 
   /*

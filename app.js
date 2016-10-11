@@ -26,7 +26,8 @@ var watson = require('watson-developer-cloud');
 var uuid = require('uuid');
 var bundleUtils = require('./config/bundle-utils');
 var os = require('os');
-
+var ffmpeg = require('fluent-ffmpeg');
+var Sync = require('sync');
 var ONE_HOUR = 3600000;
 var TWENTY_SECONDS = 20000;
 
@@ -37,15 +38,15 @@ require('./config/express')(app);
 // If no API Key is provided here, the watson-developer-cloud@2.x.x library will check for an ALCHEMY_LANGUAGE_API_KEY 
 // environment property and then fall back to the VCAP_SERVICES property provided by Bluemix.
 var visualRecognition = new watson.VisualRecognitionV3({
-  // api_key: '<api-key>',
+  // api_key: '73862c677c5988a7e59db9293f2581b084b5d5d1',
   version_date: '2015-05-19'
 });
 
-app.get('/', function(req, res) {
+app.get('/', function (req, res) {
   res.render('use');
 });
 
-var scoreData = function(score) {
+var scoreData = function (score) {
   var scoreColor;
   if (score >= 0.8) {
     scoreColor = '#b9e7c9';
@@ -54,10 +55,10 @@ var scoreData = function(score) {
   } else {
     scoreColor = '#f4bac0';
   }
-  return { score: score, xloc: (score * 312.0), scoreColor: scoreColor};
+  return { score: score, xloc: (score * 312.0), scoreColor: scoreColor };
 };
 
-app.get('/thermometer', function(req, res) {
+app.get('/thermometer', function (req, res) {
   if (typeof req.query.score === 'undefined') {
     return res.status(400).json({ error: 'Missing required parameter: score', code: 400 });
   }
@@ -70,7 +71,7 @@ app.get('/thermometer', function(req, res) {
   }
 });
 
-app.get('/ready/:classifier_id', function(req, res) {
+app.get('/ready/:classifier_id', function (req, res) {
   visualRecognition.getClassifier(req.params, function getClassifier(err, classifier) {
     if (err) {
       console.log(err);
@@ -80,11 +81,11 @@ app.get('/ready/:classifier_id', function(req, res) {
   });
 });
 
-app.get('/train', function(req, res) {
+app.get('/train', function (req, res) {
   res.render('train');
 });
 
-app.get('/test', function(req, res) {
+app.get('/test', function (req, res) {
   res.render('test', {
     bundle: JSON.parse(req.cookies.bundle || '{}'),
     classifier: JSON.parse(req.cookies.classifier || '{}')
@@ -93,7 +94,7 @@ app.get('/test', function(req, res) {
 
 
 function deleteUploadedFile(readStream) {
-  fs.unlink(readStream.path, function(e) {
+  fs.unlink(readStream.path, function (e) {
     if (e) {
       console.log('error deleting %s: %s', readStream.path, e);
     }
@@ -105,14 +106,14 @@ function deleteUploadedFile(readStream) {
  * @param req.body.bundles Array of selected bundles
  * @param req.body.kind The bundle kind
  */
-app.post('/api/classifiers', app.upload.fields([{ name: 'classupload', maxCount: 3 }, { name: 'negativeclassupload', maxCount: 1 }]), function(req, res) {
+app.post('/api/classifiers', app.upload.fields([{ name: 'classupload', maxCount: 3 }, { name: 'negativeclassupload', maxCount: 1 }]), function (req, res) {
   var formData;
 
   if (!req.files) {
     formData = bundleUtils.createFormData(req.body);
   } else {
     formData = { name: req.body.classifiername };
-    req.files.classupload.map(function(fileobj, idx) {
+    req.files.classupload.map(function (fileobj, idx) {
       formData[req.body.classname[idx] + '_positive_examples'] = fs.createReadStream(path.join(fileobj.destination, fileobj.filename));
     });
 
@@ -145,7 +146,7 @@ app.post('/api/classifiers', app.upload.fields([{ name: 'classupload', maxCount:
   });
 });
 
-app.post('/api/retrain/:classifier_id', app.upload.any(), function(req, res) {
+app.post('/api/retrain/:classifier_id', app.upload.any(), function (req, res) {
   let formData = { classifier_id: req.params.classifier_id };
   if (req.file) {
     if (req.file.fieldname.match(/^(negative_examples|.*_positive_examples)$/)) {
@@ -154,7 +155,7 @@ app.post('/api/retrain/:classifier_id', app.upload.any(), function(req, res) {
   }
   let bodyKeys = Object.keys(req.body);
 
-  bodyKeys.length && bodyKeys.reduce(function(store, item) {
+  bodyKeys.length && bodyKeys.reduce(function (store, item) {
     let pathToZip = path.join('./public/images/bundles', req.body[item]);
     try {
       fs.statSync(pathToZip);
@@ -163,7 +164,7 @@ app.post('/api/retrain/:classifier_id', app.upload.any(), function(req, res) {
       console.log(pathToZip, " path not found");
     }
     return store;
-  },formData);
+  }, formData);
 
   req.files && req.files.reduce(function (store, item) {
     if (item.fieldname.match(/^(negative_examples|.*_positive_examples)$/)) {
@@ -172,11 +173,11 @@ app.post('/api/retrain/:classifier_id', app.upload.any(), function(req, res) {
     return store;
   }, formData);
 
-  visualRecognition.retrainClassifier(formData, function(err, classifier) {
+  visualRecognition.retrainClassifier(formData, function (err, classifier) {
     if (err) {
-      console.log(err, Object.keys(formData),classifier);
+      console.log(err, Object.keys(formData), classifier);
     }
-    Object.keys(formData).filter(function(item) { return item !== 'classifier_id'; }).map(function (item) {
+    Object.keys(formData).filter(function (item) { return item !== 'classifier_id'; }).map(function (item) {
       if (formData[item].path.match("public/images/bundles") === null) {
         fs.unlink(formData[item].path, function (e) {
           if (e) {
@@ -197,14 +198,15 @@ app.post('/api/retrain/:classifier_id', app.upload.any(), function(req, res) {
  * Gets the status of a classifier
  * @param req.params.classifier_id The classifier id
  */
-app.get('/api/classifiers/:classifier_id', function(req, res) {
+app.get('/api/classifiers/:classifier_id', function (req, res) {
   visualRecognition.getClassifier(req.params, function getClassifier(err, classifier) {
     if (err) {
       console.log(err);
       return res.status(err.code || 500).json(err);
     }
     res.json(classifier);
-  });});
+  });
+});
 
 /**
  * Parse a base 64 image and return the extension and buffer
@@ -214,14 +216,43 @@ app.get('/api/classifiers/:classifier_id', function(req, res) {
 function parseBase64Image(imageString) {
   var matches = imageString.match(/^data:image\/([A-Za-z-+\/]+);base64,(.+)$/);
   var resource = {};
-
   if (matches.length !== 3) {
     return null;
   }
-
   resource.type = matches[1] === 'jpeg' ? 'jpg' : matches[1];
   resource.data = new Buffer(matches[2], 'base64');
   return resource;
+}
+
+/**
+ * take a random screenshot from a video
+ * @param  {String} imageString The image data as base65 string
+ * @return {String} path of the screenshot
+ */
+function asyncScreenshot(videoPath, callback) {
+  process.nextTick(function () {
+    console.log("Process for MOV file:" + videoPath);
+    var screenshot = 'screenshot.png';
+    var screenshotPath = path.join('public', 'buff', screenshot);
+    ffmpeg(fs.createReadStream(path.join('public', videoPath)))
+      .screenshots({ timemarks: [Math.floor(Math.random() * 100) + 30], filename: screenshot }, path.join('public', 'buff'))
+      .on('end', function () {
+        console.log('screenshots were saved');
+        fs.stat(screenshotPath, function (err, stat) {
+          if (err) return console.error(err);
+          if (stat.size < 100 * 1024) {
+            console.log("Too small! retake screenshot:" + stat.size);
+            asyncScreenshot(videoPath, callback);
+          } else {
+            console.log("Screenshot Taken: " + screenshotPath);
+            callback(null, screenshotPath);
+          }
+        });
+      })
+      .on('error', function (err) {
+        console.log('an error happened: ' + err.message);
+      });
+  })
 }
 
 /**
@@ -230,87 +261,94 @@ function parseBase64Image(imageString) {
  *                     images/test.jpg or https://example.com/test.jpg
  * @param req.file The image file.
  */
-app.post('/api/classify', app.upload.single('images_file'), function(req, res) {
-  var params = {
-    url: null,
-    images_file: null
-  };
-
-  if (req.file) { // file image
-    params.images_file = fs.createReadStream(req.file.path);
-  } else if (req.body.url && req.body.url.indexOf('images') === 0) { // local image
-    params.images_file = fs.createReadStream(path.join('public', req.body.url));
-  } else if (req.body.image_data) {
-    // write the base64 image to a temp file
-    var resource = parseBase64Image(req.body.image_data);
-    var temp = path.join(os.tmpdir(), uuid.v1() + '.' + resource.type);
-    fs.writeFileSync(temp, resource.data);
-    params.images_file = fs.createReadStream(temp);
-  } else if (req.body.url) { // url
-    params.url = req.body.url;
-  } else { // malformed url
-    return res.status(400).json({ error: 'Malformed URL', code: 400 });
-  }
-
-  if (params.images_file) {
-    delete params.url;
-  } else {
-    delete params.images_file;
-  }
-  var methods = [];
-  if (req.body.classifier_id || process.env.OVERRIDE_CLASSIFIER_ID) {
-    params.classifier_ids = req.body.classifier_id ? [req.body.classifier_id] : [process.env.OVERRIDE_CLASSIFIER_ID];
-    methods.push('classify');
-  } else {
-    methods.push('classify');
-    methods.push('detectFaces');
-    methods.push('recognizeText');
-  }
-
-  // run the 3 classifiers asynchronously and combine the results
-  async.parallel(methods.map(function(method) {
-    var fn = visualRecognition[method].bind(visualRecognition, params);
-    if (method === 'recognizeText' || method === 'detectFaces') {
-      return async.reflect(async.timeout(fn, TWENTY_SECONDS));
+app.post('/api/classify', app.upload.single('images_file'), function (req, res) {
+  Sync(function () {
+    var params = {
+      url: null,
+      images_file: null
+    }
+    if (req.file) { // file image
+      params.images_file = fs.createReadStream(req.file.path);
+    } else if (req.body.url && req.body.url.indexOf('images') === 0) { // local image
+      params.images_file = fs.createReadStream(path.join('public', req.body.url));
+    } else if (req.body.image_data) {
+      // write the base64 image to a temp file
+      var resource = parseBase64Image(req.body.image_data);
+      var temp = path.join(os.tmpdir(), uuid.v1() + '.' + resource.type);
+      fs.writeFileSync(temp, resource.data);
+      params.images_file = fs.createReadStream(temp);
+    } else if (req.body.url) { // url
+      if (req.body.url.toLowerCase().endsWith(".mov")) {
+        // params.url = asyncScreenshot.sync(null, req.body.url);
+        params.images_file = fs.createReadStream(asyncScreenshot.sync(null, req.body.url));
+      } else {
+        params.url = req.body.url;
+      }
+    } else { // malformed url
+      return res.status(400).json({ error: 'Malformed URL', code: 400 });
+    }
+    if (params.images_file) {
+      delete params.url;
     } else {
-      return async.reflect(fn);
+      delete params.images_file;
     }
-  }), function(err, results) {
-    // delete the recognized file
-    if (params.images_file && !req.body.url) {
-      deleteUploadedFile(params.images_file);
+    var methods = [];
+    if (req.body.classifier_id || process.env.OVERRIDE_CLASSIFIER_ID) {
+      params.classifier_ids = req.body.classifier_id ? [req.body.classifier_id] : [process.env.OVERRIDE_CLASSIFIER_ID];
+      methods.push('classify');
+    } else {
+      methods.push('classify');
+      methods.push('detectFaces');
+      methods.push('recognizeText');
     }
-
-    if (err) {
-      console.log(err);
-      return res.status(err.code || 500).json(err);
-    }
-    // combine the results
-    var combine = results.map(function(result) {
-      if (result.value && result.value.length) {
-        // value is an array of arguments passed to the callback (excluding the error).
-        // In this case, it's the result and then the request object.
-        // We only want the result.
-        result.value = result.value[0];
+    // res.status(400).json('combine.error');
+    // run the 3 classifiers asynchronously and combine the results
+    async.parallel(methods.map(function(method) {
+      var fn = visualRecognition[method].bind(visualRecognition, params);
+      if (method === 'recognizeText' || method === 'detectFaces') {
+        return async.reflect(async.timeout(fn, TWENTY_SECONDS));
+      } else {
+        return async.reflect(fn);
       }
-      return result;
-    }).reduce(function(prev, cur) {
-      return extend(true, prev, cur);
-    });
-    if (combine.value) {
-      // save the classifier_id as part of the response
-      if (req.body.classifier_id) {
-        combine.value.classifier_ids = req.body.classifier_id;
+    }), function(err, results) {
+      // delete the recognized file
+      if (params.images_file && !req.body.url) {
+        deleteUploadedFile(params.images_file);
       }
-      combine.value.raw = {};
-      methods.map(function(methodName, idx) {
-        combine.value.raw[methodName] = encodeURIComponent(JSON.stringify(results[idx].value));
+      if (err) {
+        console.log(err);
+        return res.status(err.code || 500).json(err);
+      }
+      // combine the results
+      var combine = results.map(function(result) {
+        if (result.value && result.value.length) {
+          // value is an array of arguments passed to the callback (excluding the error).
+          // In this case, it's the result and then the request object.
+          // We only want the result.
+          result.value = result.value[0];
+        }
+        return result;
+      }).reduce(function(prev, cur) {
+        return extend(true, prev, cur);
       });
-      res.json(combine.value);
-    } else {
-      res.status(400).json(combine.error);
-    }
-  });
+      if (combine.value) {
+        // save the classifier_id as part of the response
+        if (req.body.classifier_id) {
+          combine.value.classifier_ids = req.body.classifier_id;
+        }
+        combine.value.raw = {};
+        methods.map(function(methodName, idx) {
+          combine.value.raw[methodName] = encodeURIComponent(JSON.stringify(results[idx].value));
+        });
+        res.json(combine.value);
+      } else {
+        res.status(400).json(combine.error);
+      }
+    });
+  })
 });
+
+
+
 
 module.exports = app;

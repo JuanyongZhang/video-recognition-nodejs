@@ -118,11 +118,12 @@ module.exports.currentPage = currentPage;
 
 $(document).ready(function() {
   // tagging which images are landscape
-  landscapify('.use--example-image');
+  landscapify('.use--example-image');  
   landscapify('.use--output-image');
   landscapify('.train--bundle-thumb');
   landscapify('.test--example-image');
   landscapify('.test--output-image');
+
 
   square();
   imageFadeIn('.square img');

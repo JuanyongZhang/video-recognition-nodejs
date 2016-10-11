@@ -1,0 +1,7 @@
+mixin sampleVideos(array, className, id)
+  each item, index in array
+    //- iframe.video-player(data-bind="attr: {src: #{item}}" frameborder="0" allowfullscreen)
+    label(class='#{className}--example-thumb', style="width:320px;height:136px" for='#{className}--video#{index}_#{id}')
+      video(controls='controls' class='#{className}--video-clip')
+        source(src='#{item}', type='video/mp4', id='theVideo-#{index}')
+      div(class='#{className}--example-image-overlay')
