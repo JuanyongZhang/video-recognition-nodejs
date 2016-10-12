@@ -1,12 +1,9 @@
-# Visual Recognition Demo
-[![Build Status](https://travis-ci.org/watson-developer-cloud/visual-recognition-nodejs.svg?branch=master)](https://travis-ci.org/watson-developer-cloud/visual-recognition-nodejs?branch=master)
-[![codecov.io](https://codecov.io/github/watson-developer-cloud/visual-recognition-nodejs/coverage.svg?branch=master)](https://codecov.io/github/watson-developer-cloud/visual-recognition-nodejs?branch=master)
+# Video Recognition Demo
 
-The [Visual Recognition][visual_recognition_service] Service uses deep learning algorithms to analyze images for scenes, objects, faces, text, and other subjects that can give you insights into your visual content. You can organize image libraries, understand an individual image, and create custom classifiers for specific results that are tailored to your needs.
+The [Video Recognition][visual_recognition_service] Service uses deep learning algorithms to analyze images for scenes, objects, faces, text, and other subjects that can give you insights into your visual content. You can organize image libraries, understand an individual image, and create custom classifiers for specific results that are tailored to your needs.
 
 Give it a try! Click the button below to fork into IBM DevOps Services and deploy your own copy of this application on Bluemix.
 
-[![Deploy to Bluemix](https://bluemix.net/deploy/button.png)](https://bluemix.net/deploy?repository=https://github.com/watson-developer-cloud/visual-recognition-nodejs)
 
 ## Getting Started
 
@@ -111,43 +108,7 @@ To view your logs and troubleshoot your Bluemix application, run:
 
 ## Changing the Included Images.
 
-### Sample Images
 
-The sample images are the first 7 images when the site loads.  They
-are called from a Jade mixin found in
-`views/mixins/sampleImages.jade`.  If you just want to replace those
-images with different images,  you can replace them in
-`public/images/samples` and they are numbered 1 - 7 and are `jpg`
-formatted.
-
-### Custom Classifier Bundles
-
-Adding new/different custom classifer bundles is much more invovled.
-You can follow the template of the existing bundles found in
-`views/includes/train.jade`.
-
-Or, you can train a custom classifier using the api or the form and
-then use the classifier ID.  
-
-## Getting the Classifier ID
-
-When you train a custom classifier, the name of the classifier is
-displayed in the test form.
-
-![Classifier ID Tooltip][screengrab-tooltip.png]
-
-If you hover your mouse over the classifier name, the classifier ID
-will be shown in the tooltip. You can also click on the name, and it
-will toggle between the classifier name and the classifier ID.
-
-You can then use this custom classifier id by placing it after the hash
-in the request URL.  For example, lets say you are running the system
-localy, so the base URL is `http://localhost:3000` and then you train
-a classifier.  This newly trained classifier might have an id like
-`SatelliteImagery_859438478`.   If you wanted to use this classifier
-instead of training a new one,  you can navigate to
-`http://localhost:3000/train#SatelliteImagery_859438478` and use the
-training form with your existing classifier.
 
 ## License
 
@@ -157,19 +118,6 @@ training form with your existing classifier.
 
   See [CONTRIBUTING](CONTRIBUTING.md).
 
-## Open Source @ IBM
-  Find more open source projects on the [IBM Github Page](http://ibm.github.io/)
-
-### Privacy Notice
-
-This node sample web application includes code to track deployments to Bluemix and other Cloud Foundry platforms. The following information is sent to a [Deployment Tracker][deploy_track_url] service on each deployment:
-
-* Application Name (`application_name`)
-* Space ID (`space_id`)
-* Application Version (`application_version`)
-* Application URIs (`application_uris`)
-
-This data is collected from the `VCAP_APPLICATION` environment variable in IBM Bluemix and other Cloud Foundry platforms. This data is used by IBM to track metrics around deployments of sample applications to IBM Bluemix. Only deployments of sample applications that include code to ping the Deployment Tracker service will be tracked.
 
 ### Disabling Deployment Tracking
 
